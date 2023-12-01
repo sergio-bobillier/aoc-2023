@@ -2,12 +2,39 @@ use std::fs;
 use regex::Regex;
 
 const FILENAME:&str = "input";
+const NUMBERS:[&str; 10] = ["\\d", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+fn translate(number: &str) -> u32 {
+    let index_option = NUMBERS.iter().position(|candidate| candidate == &number);
+
+    match index_option {
+        Some(index) => {
+            return index as u32;
+        }
+        None => {
+            let parse_result = number.parse::<u32>();
+
+            match parse_result {
+                Err(error) => {
+                    panic!(
+                        "Unable to parse '{}'': {}",
+                        number, error
+                    );
+                }
+                Ok(number) => {
+                    return number;
+                }
+            }
+        }
+    }
+}
 
 fn parse_text(text: String) -> u32 {
     let lines = text.split('\n');
     let mut total: u32 = 0;
 
-    let regexp = Regex::new(r"\d").unwrap();
+    let x = NUMBERS.join("|");
+    let regexp = Regex::new(&x).unwrap();
 
     for line in lines {
         let matches:Vec<_> = regexp.find_iter(line)
@@ -24,22 +51,13 @@ fn parse_text(text: String) -> u32 {
         let first_digit = first_match.unwrap().to_string();
         let last_digit = last_match.unwrap().to_string();
 
-        let mut line_digit_str = first_digit.clone();
-        line_digit_str.push_str(&last_digit);
+        let first_number= translate(&first_digit);
+        let last_number = translate(&last_digit);
 
-        let parse_result = line_digit_str.parse::<u32>();
+        let number = (first_number * 10 + last_number);
+        total += number;
 
-        match parse_result {
-            Err(error) => {
-                panic!(
-                    "Unable to parse '{}' from line '{}': {}",
-                    line_digit_str, line, error
-                );
-            }
-            Ok(line_digit) => {
-                total += line_digit
-            }
-        }
+        println!("{} -> {}:{} -> {}:{} -> {} -> {}", line, first_digit, last_digit, first_number, last_number, number, total)
     }
 
     total
