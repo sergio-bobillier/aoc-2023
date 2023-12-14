@@ -1,5 +1,7 @@
-use std::{env, fs, process};
+use std::{env, fs, process, collections::VecDeque};
 use regex::Regex;
+
+const NUMBERS:[char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 fn read_input(file_name: String) -> String {
     let result = fs::read_to_string(&file_name);
@@ -27,6 +29,43 @@ fn make_box((x, y):(usize, usize), len: usize, width: usize, height: usize) -> (
     (left, top, right, bottom)
 }
 
+fn is_number(character: char) -> bool {
+    NUMBERS.contains(&character)
+}
+
+fn expand_number((x, y):(usize, usize), matrix: &Vec<Vec<char>>, width: usize) -> String {
+    let mut characters: VecDeque<char> = VecDeque::new();
+
+    characters.push_front(matrix[y][x]);
+
+    let mut i: usize = x;
+
+    while i > 0 {
+        i -= 1;
+
+        let character = matrix[y][i];
+        if is_number(character) {
+            characters.push_front(character)
+        } else {
+            break;
+        }
+    }
+
+    i = x + 1;
+
+    while i < width {
+        let character = matrix[y][i];
+        if is_number(character) {
+            characters.push_back(character)
+        } else {
+            break;
+        }
+        i += 1;
+    }
+
+    String::from_iter(characters)
+}
+
 fn main() {
     let mut args: Vec<String> = env::args().collect();
     let file_name = args.pop().unwrap();
@@ -43,29 +82,49 @@ fn main() {
     let stream = text.replace("\n", "");
     let matrix: Vec<Vec<char>> = text.split("\n").map( |line| line.chars().collect() ).collect();
 
-    let matcher = Regex::new("\\d+").unwrap();
+    let star_matcher = Regex::new("\\*").unwrap();
 
-    let matches = matcher.find_iter(&stream);
+    let matches = star_matcher.find_iter(&stream);
 
     let mut sum:u32 = 0;
-    let symbol_matcher = Regex::new("[^\\d.]").unwrap();
 
     for matched_item in matches {
         let position = matched_item.start();
         let (x, y) = translate(position, width);
         let (left, top, right, bottom) = make_box((x, y), matched_item.len(), width - 1, height - 1);
 
-        let mut square: String = String::new();
+        let mut numbers_count = 0;
+        let mut numbers_cords: Vec<(usize, usize)> = Vec::new();
+        let mut in_number = false;
 
         for i in top..=bottom {
             for j in left..=right {
-                square.push(matrix[i][j]);
+                let character = matrix[i][j];
+
+                if is_number(character) {
+                    if !in_number {
+                        numbers_cords.push((j, i));
+                        numbers_count += 1;
+                        in_number = true;
+                    }
+                } else {
+                    in_number = false;
+                }
             }
+
+            in_number = false;
         }
 
-        if symbol_matcher.is_match(&square) {
-            let number = matched_item.as_str().parse::<u32>().unwrap();
-            sum += number
+        if numbers_count == 2 {
+            let mut ratio: u32 = 1;
+
+            for cord in numbers_cords {
+                let number_string = expand_number(cord, &matrix, width);
+                let number = number_string.parse::<u32>().unwrap();
+                ratio *= number;
+            }
+
+            sum += ratio;
         }
     }
 
