@@ -3,6 +3,11 @@ use regex::{self, Regex};
 
 const MISSING_ARGUMENTS_MESSAGE:&str = "Not enough arguments, please specify an input file";
 
+struct Card {
+    winning_numbers: u32,
+    copies: u32
+}
+
 fn read_input(file_name: String) -> String {
     let result = fs::read_to_string(&file_name);
 
@@ -27,12 +32,10 @@ fn main() {
     let text = read_input(file_name);
     let lines = text.split('\n');
 
-    let mut total_points:u32 = 0;
+    let mut cards: Vec<Card> = Vec::new();
 
     for line in lines {
         if line.is_empty() { continue }
-
-        let mut card_points: u32 = 0;
 
         let mut parts = line.split('|');
 
@@ -52,28 +55,43 @@ fn main() {
 
         let matcher = Regex::new("\\d+").expect("Regex compilation failed!");
 
-        let mut numbers: Vec<&str> = Vec::new();
+        let mut numbers: Vec<String> = Vec::new();
 
         matcher.find_iter(winning_numbers)
-               .for_each( |number| numbers.push(number.as_str()) );
+               .for_each( |number| numbers.push(number.as_str().to_string()) );
 
         matcher.find_iter(owned_numbers)
-               .for_each ( |number| numbers.push(number.as_str()) );
+               .for_each ( |number| numbers.push(number.as_str().to_string()) );
 
         numbers.sort();
 
+        let mut winning_numbers: u32 = 0;
+
         for i in 0..numbers.len()-1 {
             if numbers[i] == numbers[i+1] {
-                if card_points == 0 {
-                    card_points = 1
-                } else {
-                    card_points *= 2;
-                }
+                winning_numbers += 1
             }
         }
 
-        total_points += card_points;
+        cards.push( Card { winning_numbers, copies: 1 } )
     }
 
-    println!("Total: {}", total_points);
+    for i in 0..cards.len() {
+        let card = &cards[i];
+        let copies = card.copies;
+        let cards_to_copy = card.winning_numbers as usize;
+
+        let mut j: usize = 1;
+
+        while j <= cards_to_copy && j < cards.len() {
+            cards[i + j].copies += copies;
+            j += 1
+        }
+    }
+
+    let mut total_scratchcards: u32 = 0;
+
+    for card in cards { total_scratchcards += card.copies };
+
+    println!("Total: {}", total_scratchcards);
 }
